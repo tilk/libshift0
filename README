@@ -1,0 +1,31 @@
+
+libshift0, implementation of delimited control for C/C++
+
+Copyright (c) 2011, Marek Materzok <tilk@tilk.eu>
+
+1. About
+
+  This library implements the shift0/reset0 delimited control operators,
+  as introduced by Danvy in Filinski, and as used in my ICFP 2011 paper.
+
+2. Caveats
+
+  The continuations created by this library are not reentrant, i.e.
+  one cannot call the continuation inside the call to the same continuation.
+
+  The implementation is somewhat incompatible with stack-allocated
+  objects with custom destructors in C++.
+
+  The core operators are implemented in x86 assembly and don't work on
+  other hardware architectures.
+
+3. Copyright notice
+
+   1. Redistributions of source code must retain the above copyright notice, 
+      this list of conditions and the following disclaimer.
+   2. Redistributions in binary form must reproduce the above copyright 
+      notice, this list of conditions and the following disclaimer in the 
+      documentation and/or other materials provided with the distribution.
+ 
+  The software is provided 'as is', without any warranty.
+

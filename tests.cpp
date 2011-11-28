@@ -1,8 +1,21 @@
+/* Test suite.
+ * tests.cpp
+ *
+ * Copyright (c) 2011, Marek Materzok <tilk@tilk.eu>
+ *
+ *  1. Redistributions of source code must retain the above copyright notice, 
+ *     this list of conditions and the following disclaimer.
+ *  2. Redistributions in binary form must reproduce the above copyright 
+ *     notice, this list of conditions and the following disclaimer in the 
+ *     documentation and/or other materials provided with the distribution.
+ *
+ * The software is provided 'as is', without any warranty.
+ */
 
 #include <cstdlib>
 #include <cstdio>
 #include <cassert>
-#include "shift0.h"
+#include "shift0.hpp"
 
 #define SETREGS "movl %[ebxin], %%ebx\
 \n\tmovl %[esiin], %%esi\
@@ -36,74 +49,52 @@
         if (outregs[i] != inregs[i]) abort(); \
 }
 
-inline int32_t tested_reset(int32_t (*f)())
+inline void* tested_reset_arg(void* (*f)(void*), void* arg)
 {
-    int32_t ret;
-//    TEST_REGISTERS(ret = reset(f));
+    void* ret;
     BEGIN_TEST_REGISTERS
-        asm volatile(SETREGS : : INREGS(inregs[0], inregs[1], inregs[2]) : );
-        ret = reset(f);
+    asm volatile(SETREGS : : INREGS(inregs[0], inregs[1], inregs[2]) : );
+    ret = reset_arg(f, arg);
+    asm volatile(GETREGS : OUTREGS(outregs[0], outregs[1], outregs[2]) : : CLEANEDREGS);
+    END_TEST_REGISTERS
+    return ret;
+}
+
+inline void* tested_shift0(void* (*f)(struct cont*))
+{
+    void* ret;
+    BEGIN_TEST_REGISTERS
+    asm volatile(SETREGS : : INREGS(inregs[0], inregs[1], inregs[2]) : );
+    ret = shift0(f);
+    asm volatile(GETREGS : OUTREGS(outregs[0], outregs[1], outregs[2]) : : CLEANEDREGS);
+    END_TEST_REGISTERS
+    return ret;
+}
+
+inline void* tested_runcont(struct cont* cont, void* p)
+{
+    void* ret;
+    BEGIN_TEST_REGISTERS
+    asm volatile(SETREGS : : INREGS(inregs[0], inregs[1], inregs[2]) : CLEANEDREGS);
+    ret = runcont(cont, p);
+    asm volatile(GETREGS : OUTREGS(outregs[0], outregs[1], outregs[2]) : : );
+    END_TEST_REGISTERS
+    return ret;
+}
+
+inline void* tested_reset_arg_catch(void* (*f)(void*), void* arg)
+{
+    void* ret;
+    BEGIN_TEST_REGISTERS
+    asm volatile(SETREGS : : INREGS(inregs[0], inregs[1], inregs[2]) : );
+    try {
+        ret = reset_arg(f, arg);
+        abort();
+    } catch (int32_t v) {
         asm volatile(GETREGS : OUTREGS(outregs[0], outregs[1], outregs[2]) : : CLEANEDREGS);
-    END_TEST_REGISTERS
-    /*
-    TEST_REGISTERS( 
-    asm(SETREGS "\n\tpushl %[test]\n\tcall reset\n\taddl $4, %%esp\n\t" GETREGS 
-        : OUTREGS(outregs[0], outregs[1], outregs[2]), "=a" (ret)
-        : INREGS(inregs[0], inregs[1], inregs[2]), [test] "m" (f) 
-        : CLEANEDREGS, CALLERSAVEDREGS)); 
-    */
-    return ret;
-}
-
-inline int32_t tested_shift0(int32_t (*f)(struct cont*))
-{
-    int32_t ret;
-    BEGIN_TEST_REGISTERS
-        asm volatile(SETREGS : : INREGS(inregs[0], inregs[1], inregs[2]) : );
-        ret = shift0(f);
-        asm volatile(GETREGS : OUTREGS(outregs[0], outregs[1], outregs[2]) : : CLEANEDREGS);
-    END_TEST_REGISTERS
-    /*
-    TEST_REGISTERS(
-    asm(SETREGS "\n\tpushl %[test]\n\tcall shift0\n\taddl $4, %%esp\n\t" GETREGS
-        : OUTREGS(outregs[0], outregs[1], outregs[2]), "=a" (ret)
-        : INREGS(inregs[0], inregs[1], inregs[2]), [test] "m" (f)
-        : CLEANEDREGS, CALLERSAVEDREGS_NOEAX));
-    */
-    return ret;
-}
-
-inline int32_t tested_runcont(struct cont* cont, int32_t p)
-{
-    int32_t ret;
-    BEGIN_TEST_REGISTERS
-        asm volatile(SETREGS : : INREGS(inregs[0], inregs[1], inregs[2]) : CLEANEDREGS);
-        ret = runcont(cont, p);
-        asm volatile(GETREGS : OUTREGS(outregs[0], outregs[1], outregs[2]) : : );
-    END_TEST_REGISTERS
-    /*
-    TEST_REGISTERS(
-    asm(SETREGS "\n\tpushl %[arg]\n\tpushl %[p]\n\tcall runcont\n\taddl $8, %%esp\n\t" GETREGS
-        : OUTREGS(outregs[0], outregs[1], outregs[2]), "=a" (ret)
-        : INREGS(inregs[0], inregs[1], inregs[2]), [arg] "m" (p), [p] "m" (cont)
-        : CLEANEDREGS, CALLERSAVEDREGS_NOEAX));
-    */
-    return ret;
-}
-
-inline int32_t tested_reset_catch(int32_t (*f)())
-{
-    int32_t ret;
-    BEGIN_TEST_REGISTERS
-        asm volatile(SETREGS : : INREGS(inregs[0], inregs[1], inregs[2]) : );
-        try {
-            ret = reset(f);
-            abort();
-        } catch (int32_t v) {
-            asm volatile(GETREGS : OUTREGS(outregs[0], outregs[1], outregs[2]) : : CLEANEDREGS);
-            END_TEST_REGISTERS
-            return v;
-        }
+        END_TEST_REGISTERS
+        return (void*)v;
+    }
 }
 
 int counter;
@@ -116,96 +107,98 @@ int32_t value1, value2;
     assert(counter==c); \
 }
 
-#define RUN_TEST_EXC(c, t) RUN_TEST(c, { \
-        try { \
-            t; abort(); \
-        } catch (int32_t v) { \
-            assert(v == value1); \
-        } \
-    });
-
 void throw_scramble(int32_t v)
 {
     BEGIN_TEST_REGISTERS
-        asm volatile(SETREGS : : INREGS(inregs[0], inregs[1], inregs[2]) : CLEANEDREGS);
-        throw v;
+    asm volatile(SETREGS : : INREGS(inregs[0], inregs[1], inregs[2]) : CLEANEDREGS);
+    throw v;
     END_TEST_REGISTERS
 }
 
-int32_t test1()
+void* test1(void* a)
 {
+    assert((int32_t)a == value1);
     counter++;
-    return value1;
+    return (void*)value1;
 }
 
-int32_t test2x(struct cont *p)
+void* test2x(struct cont *p)
 {
     counter++;
-    return value1;
+    freecont(p);
+    return (void*)value1;
 }
 
-int32_t test2()
+void* test2(void* a)
 {
+    assert((int32_t)a == value1);
     counter++;
     tested_shift0(test2x);
     counter++;
     return 0;
 }
 
-int32_t test3x(struct cont *p)
+void* test3x(struct cont *p)
 {
     counter++;
-    assert(tested_runcont(p, 3) == 3+value2);
-    assert(tested_runcont(p, 4) == 4+value2);
-    assert(tested_runcont(p, 5) == 5+value2);
+    assert((int32_t)tested_runcont(p, (void*)3) == 3+value2);
+    assert((int32_t)tested_runcont(p, (void*)4) == 4+value2);
+    assert((int32_t)tested_runcont(p, (void*)5) == 5+value2);
     counter++;
-    return value1;
+    freecont(p);
+    return (void*)value1;
 }
 
-int32_t test3()
+void* test3(void* a)
 {
+    assert((int32_t)a == value1);
     counter++;
-    int32_t v = tested_shift0(test3x);
+    void* v = tested_shift0(test3x);
     counter++;
-    return v+value2;
+    return (void*)((int32_t)v+value2);
 }
 
-int32_t test4()
+void* test4(void* a)
 {
+    assert((int32_t)a == value1);
     counter++;
     throw_scramble(value1);
 }
 
-int32_t test5x(struct cont *c)
+void* test5x(struct cont *c)
 {
     counter++;
+    freecont(c);
     throw_scramble(value1);
 }
 
-int32_t test5()
+void* test5(void* a)
 {
+    assert((int32_t)a == value1);
     counter++;
     tested_shift0(test5x);
 }
 
-int32_t test6x(struct cont *c)
+void* test6x(struct cont *c)
 {
     counter++;
     try {
-        tested_runcont(c, 0);
-        tested_runcont(c, 1);
+        tested_runcont(c, (void*)0);
+        tested_runcont(c, (void*)1);
         abort();
     } catch (int32_t v) {
         assert(v == value1);
     }
-    tested_runcont(c, 0);
-    tested_runcont(c, 1);
+    tested_runcont(c, (void*)0);
+    tested_runcont(c, (void*)1);
 }
 
-int32_t test6()
+void* test6(void* a)
 {
+    assert((int32_t)a == value1);
     counter++;
-    if (tested_shift0(test6x)); {
+    void* ret = tested_shift0(test6x);
+    if (ret) {
         counter++;
         throw_scramble(value1);
     }
@@ -213,11 +206,11 @@ int32_t test6()
 
 int main()
 {
-    RUN_TEST(1, assert(tested_reset(test1) == value1));
-    RUN_TEST(2, assert(tested_reset(test2) == value1));
-    RUN_TEST(6, assert(tested_reset(test3) == value1));
-    RUN_TEST(1, assert(tested_reset_catch(test4) == value1));
-    RUN_TEST(2, assert(tested_reset_catch(test5) == value1));
-    RUN_TEST_EXC(4, tested_reset(test6));
+    RUN_TEST(1, assert((int32_t)tested_reset_arg(test1, (void*)value1) == value1));
+    RUN_TEST(2, assert((int32_t)tested_reset_arg(test2, (void*)value1) == value1));
+    RUN_TEST(6, assert((int32_t)tested_reset_arg(test3, (void*)value1) == value1));
+    RUN_TEST(1, assert((int32_t)tested_reset_arg_catch(test4, (void*)value1) == value1));
+    RUN_TEST(2, assert((int32_t)tested_reset_arg_catch(test5, (void*)value1) == value1));
+    RUN_TEST(4, assert((int32_t)tested_reset_arg_catch(test6, (void*)value1) == value1));
 }
 

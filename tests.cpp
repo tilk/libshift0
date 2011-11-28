@@ -204,6 +204,22 @@ void* test6(void* a)
     }
 }
 
+struct fobj1 {
+    char operator()(s0::cont<int, char> *c) {
+        return 'b' + (*c)(1) - 'a';
+    }
+};
+
+struct fobj {
+    char operator()() { 
+        fobj1 xobj;
+        int x = s0::shift0<int, char>(xobj);
+        return 'a' + x; 
+    };
+};
+
+fobj tfobj;
+
 int main()
 {
     RUN_TEST(1, assert((int32_t)tested_reset_arg(test1, (void*)value1) == value1));
@@ -212,5 +228,6 @@ int main()
     RUN_TEST(1, assert((int32_t)tested_reset_arg_catch(test4, (void*)value1) == value1));
     RUN_TEST(2, assert((int32_t)tested_reset_arg_catch(test5, (void*)value1) == value1));
     RUN_TEST(4, assert((int32_t)tested_reset_arg_catch(test6, (void*)value1) == value1));
+    char c = s0::reset<char,fobj>(tfobj); assert(c == 'c');
 }
 

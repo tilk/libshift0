@@ -41,6 +41,7 @@ reset_arg:
     .cfi_offset 7, -20
 # allocate the new stack
     pushl   $STACKSIZE
+# it would be nice if caller could specify a desired stack size
     call    malloc
     addl    $4, %esp
 # push the stack on the stack of stacks

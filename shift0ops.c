@@ -62,7 +62,7 @@ void *_shift_arg_internal(struct cont *c, struct shift_str *s)
 
 void *shift_arg(shiftable_arg_t f, void *arg)
 {
-    struct shift_str s;
+    struct shift_str s;  /* this looks like it could get overridden after return */
     s.f = f;
     s.arg = arg;
     return shift0_arg((shiftable_arg_t) _shift_arg_internal, (void*) &s);
